@@ -6,14 +6,15 @@ from django.db.models.sql import compiler
 _classes = {}
 select_re = re.compile('^SELECT[ ]+(DISTINCT\s)?')
 
+
 class SQLCompiler(compiler.SQLCompiler):
     def as_sql(self, with_limits=True, with_col_aliases=True, subquery=True):
-        if djangoVersion[:2] >= (1, 8):
-            query, params = super(SQLCompiler, self).as_sql(with_limits=False, 
+        if (1, 8) <= djangoVersion[:2] <= (1, 10):
+            query, params = super(SQLCompiler, self).as_sql(with_limits=False,
                                                             with_col_aliases=with_col_aliases,
                                                             subquery=subquery)
         else:
-            query, params = super(SQLCompiler, self).as_sql(with_limits=False, 
+            query, params = super(SQLCompiler, self).as_sql(with_limits=False,
                                                             with_col_aliases=with_col_aliases)
         m = select_re.match(query)
         if with_limits and m != None:
@@ -34,17 +35,22 @@ class SQLCompiler(compiler.SQLCompiler):
                     query = select_re.sub('SELECT %s ' % insert, query)
         return query, params
 
+
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
     pass
+
 
 class SQLDeleteCompiler(compiler.SQLDeleteCompiler, SQLCompiler):
     pass
 
+
 class SQLUpdateCompiler(compiler.SQLUpdateCompiler, SQLCompiler):
     pass
 
+
 class SQLAggregateCompiler(compiler.SQLAggregateCompiler, SQLCompiler):
     pass
+
 
 if djangoVersion[:2] < (1, 8):
     # Removed in 1.8
