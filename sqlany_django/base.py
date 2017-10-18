@@ -4,12 +4,13 @@ SQL Anywhere database backend for Django.
 Requires sqlanydb
 """
 
-import re,ctypes,sys
+import re, ctypes, sys
 
 try:
     import sqlanydb as Database
 except ImportError as e:
     from django.core.exceptions import ImproperlyConfigured
+
     raise ImproperlyConfigured("Error loading sqlanydb module: %s" % e)
 
 from django import VERSION as djangoVersion
@@ -19,6 +20,7 @@ if djangoVersion[:2] >= (1, 4):
     import datetime
 
 from django.conf import settings
+
 if djangoVersion[:2] >= (1, 8):
     from django.db.backends.base.features import BaseDatabaseFeatures
     from django.db.backends.base.operations import BaseDatabaseOperations
@@ -26,6 +28,7 @@ if djangoVersion[:2] >= (1, 8):
     from django.db.backends import utils as util
 else:
     from django.db.backends import *
+
     if djangoVersion[:2] >= (1, 7):
         # renamed in 1.7
         util = utils
@@ -34,6 +37,7 @@ from sqlany_django.client import DatabaseClient
 from sqlany_django.creation import DatabaseCreation
 from sqlany_django.introspection import DatabaseIntrospection
 from sqlany_django.validation import DatabaseValidation
+
 if djangoVersion[:2] >= (1, 7):
     from sqlany_django.schema import DatabaseSchemaEditor
 if djangoVersion[:2] >= (1, 8):
@@ -48,9 +52,11 @@ Database.register_converter(Database.DT_TIME, util.typecast_time)
 Database.register_converter(Database.DT_DECIMAL, util.typecast_decimal)
 Database.register_converter(Database.DT_BIT, lambda x: x if x is None else bool(x))
 
+
 def trace(x):
     # print( x )
     return x
+
 
 def _datetimes_in(args):
     def fix(arg):
@@ -62,6 +68,7 @@ def _datetimes_in(args):
         return arg
 
     return tuple(fix(arg) for arg in args)
+
 
 class CursorWrapper(object):
     """
@@ -169,6 +176,7 @@ class CursorWrapper(object):
     def __iter__(self):
         return iter(self.fetchall())
 
+
 class DatabaseFeatures(BaseDatabaseFeatures):
     allows_group_by_pk = False
     empty_fetchmany_value = []
@@ -180,6 +188,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_sequence_reset = False
     update_can_self_select = False
     uses_custom_query_class = False
+
 
 class DatabaseOperations(BaseDatabaseOperations):
     compiler_module = "sqlany_django.compiler"
@@ -203,7 +212,7 @@ class DatabaseOperations(BaseDatabaseOperations):
     if djangoVersion[:2] >= (1, 8):
         # SQL Anywhere does not support the INTERVAL syntax
         pass
-        #def date_interval_sql(self, timedelta):
+        # def date_interval_sql(self, timedelta):
     else:
         def date_interval_sql(self, sql, connector, timedelta):
             """
@@ -218,7 +227,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         the given specificity.
         """
         fields = ['year', 'month', 'day', 'hour', 'minute', 'second']
-        format = ('YYYY-', 'MM', '-DD', 'HH:', 'NN', ':SS') # Use double percents to escape.
+        format = ('YYYY-', 'MM', '-DD', 'HH:', 'NN', ':SS')  # Use double percents to escape.
         format_def = ('0000-', '01', '-01', ' 00:', '00', ':00')
         try:
             i = fields.index(lookup_type) + 1
@@ -241,7 +250,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         else:
             # YEAR(), MONTH(), DAY(), HOUR(), MINUTE(), SECOND() functions
             sql = "%s(%s)" % (lookup_type.upper(), field_name)
-        return sql,[]
+        return sql, []
 
     def datetime_trunc_sql(self, lookup_type, field_name, tzname):
         """
@@ -251,7 +260,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         a tuple of parameters.
         """
         fields = ['year', 'month', 'day', 'hour', 'minute', 'second']
-        format = ('YYYY-', 'MM', '-DD', 'HH:', 'NN', ':SS') # Use double percents to escape.
+        format = ('YYYY-', 'MM', '-DD', 'HH:', 'NN', ':SS')  # Use double percents to escape.
         format_def = ('0000-', '01', '-01', ' 00:', '00', ':00')
         try:
             i = fields.index(lookup_type) + 1
@@ -260,7 +269,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         else:
             format_str = ''.join([f for f in format[:i]] + [f for f in format_def[i:]])
             sql = "CAST(DATEFORMAT(%s, '%s') AS DATETIME)" % (field_name, format_str)
-        return sql,[]
+        return sql, []
 
     def deferrable_sql(self):
         return ""
@@ -291,7 +300,7 @@ class DatabaseOperations(BaseDatabaseOperations):
     def last_insert_id(self, cursor, table_name, pk_name):
         cursor.execute('SELECT @@identity')
         return cursor.fetchone()[0]
-    
+
     def max_name_length(self):
         """
         Returns the maximum length of table and column names, or None if there
@@ -306,7 +315,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         infinity". Returns None if the limit clause can be omitted in this case.
         """
         return None
-    
+
     def prep_for_iexact_query(self, x):
         return x
 
@@ -325,7 +334,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         not quote the given name if it's already been quoted.
         """
         if name.startswith('"') and name.endswith('"'):
-            return name # Quoting once is enough.
+            return name  # Quoting once is enough.
         return '"%s"' % name
 
     def regex_lookup(self, lookup_type):
@@ -381,10 +390,10 @@ class DatabaseOperations(BaseDatabaseOperations):
             # it won't be necessary
             for sequence in sequences:
                 sql.append('call sa_reset_identity(\'%s\', NULL, 0);' % sequence['table'])
-            
+
             sql.append('SET TEMPORARY OPTION wait_for_commit = \'Off\';')
             sql.append('COMMIT;')
-            
+
             return sql
 
     def value_to_db_datetime(self, value):
@@ -401,7 +410,7 @@ class DatabaseOperations(BaseDatabaseOperations):
                     value = value.astimezone(utc).replace(tzinfo=None)
                 else:
                     make_naive(value, get_default_timezone())
-    
+
         return str(value)
 
     def value_to_db_time(self, value):
@@ -415,8 +424,9 @@ class DatabaseOperations(BaseDatabaseOperations):
         else:
             if is_aware(value):
                 make_naive(value, get_default_timezone())
-    
+
         return str(value)
+
 
 class DatabaseWrapper(BaseDatabaseWrapper):
     vendor = 'sqlanywhere'
@@ -440,8 +450,15 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         # Moved from DatabaseCreation in 1.8
         data_types = global_data_types
 
+    client_class = DatabaseClient
+    creation_class = DatabaseCreation
+    features_class = DatabaseFeatures
+    introspection_class = DatabaseIntrospection
+    validation_class = DatabaseValidation
+    ops_class = DatabaseOperations
+
     Database = Database
-    
+
     def __init__(self, *args, **kwargs):
         super(DatabaseWrapper, self).__init__(*args, **kwargs)
 
@@ -491,27 +508,29 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
         settings_dict = self.settings_dict
 
-        def setting( key ):
+        def setting(key):
             if key in settings_dict:
                 return settings_dict[key]
             dbkey = 'DATABASE_%s' % key
             if dbkey in settings_dict:
                 return settings_dict[dbkey]
             return None
-        #
-        
-        def empty( s ):
-            return True if ( s is None or s == '' ) else False
+
         #
 
-        uid = setting( 'USER' )
-        if not empty( uid ):
+        def empty(s):
+            return True if (s is None or s == '') else False
+
+        #
+
+        uid = setting('USER')
+        if not empty(uid):
             kwargs['uid'] = uid
-        dbn = setting( 'NAME' )
-        if not empty( dbn ):
+        dbn = setting('NAME')
+        if not empty(dbn):
             kwargs['dbn'] = dbn
-        pwd = setting( 'PASSWORD' )
-        if not empty( pwd ):
+        pwd = setting('PASSWORD')
+        if not empty(pwd):
             kwargs['pwd'] = pwd
 
         root = Database.Root('PYTHON')
@@ -530,41 +549,41 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 vers = str(vers, 'utf-8')
             vers = int(vers.split('.')[0])
         else:
-            vers = 11 # assume old
-        host = setting( 'HOST' )
+            vers = 11  # assume old
+        host = setting('HOST')
         if host == '':
-            host = 'localhost' # "Set to empty string for localhost"
-        if not empty( host ) and vers > 11:
+            host = 'localhost'  # "Set to empty string for localhost"
+        if not empty(host) and vers > 11:
             kwargs['host'] = host
-            port = setting( 'PORT' )
-            if not empty( port ):
+            port = setting('PORT')
+            if not empty(port):
                 kwargs['host'] += ':%s' % port
         else:
-            if not empty( host ):
+            if not empty(host):
                 links['host'] = host
-            port = setting( 'PORT' )
-            if not empty( port ):
-                links['port'] = str( port )
+            port = setting('PORT')
+            if not empty(port):
+                links['port'] = str(port)
         if len(links) > 0:
-            kwargs['links'] = 'tcpip(' + ','.join(k+'='+v for k, v in list(links.items())) + ')'
-        kwargs.update(setting( 'OPTIONS' ))
+            kwargs['links'] = 'tcpip(' + ','.join(k + '=' + v for k, v in list(links.items())) + ')'
+        kwargs.update(setting('OPTIONS'))
         return kwargs
 
-    def get_new_connection( self, conn_params ):
+    def get_new_connection(self, conn_params):
         conn = Database.connect(**conn_params)
         if conn is not None and djangoVersion[:2] >= (1, 6):
             # Autocommit is the default for 1.6+
             curs = conn.cursor()
-            curs.execute( "SET TEMPORARY OPTION chained='Off'" )
+            curs.execute("SET TEMPORARY OPTION chained='Off'")
             curs.close()
         return conn
-        
-    def init_connection_state( self ):
-        if 'AUTOCOMMIT' in self.settings_dict and \
-           not self.settings_dict['AUTOCOMMIT']:
-            self.set_autocommit( False )
 
-    def create_cursor( self ):
+    def init_connection_state(self):
+        if 'AUTOCOMMIT' in self.settings_dict and \
+                not self.settings_dict['AUTOCOMMIT']:
+            self.set_autocommit(False)
+
+    def create_cursor(self, name=None):
         cursor = None
         if not self._valid_connection():
             kwargs = self.get_connection_params()
@@ -579,13 +598,13 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
         return cursor
 
-    def _set_autocommit( self, autocommit ):
+    def _set_autocommit(self, autocommit):
         """
         Backend-specific implementation to enable or disable autocommit.
         """
         curs = self.create_cursor()
-        curs.execute( "SET TEMPORARY OPTION chained='%s'" %
-                      ('Off' if autocommit else 'On') )
+        curs.execute("SET TEMPORARY OPTION chained='%s'" %
+                     ('Off' if autocommit else 'On'))
         curs.close()
 
     def is_usable(self):
@@ -599,6 +618,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     if djangoVersion[:2] >= (1, 7):
         def schema_editor(self, *args, **kwargs):
             "Returns a new instance of this backend's SchemaEditor"
-            return DatabaseSchemaEditor( self, *args, **kwargs )
-        
+            return DatabaseSchemaEditor(self, *args, **kwargs)
+
 #
