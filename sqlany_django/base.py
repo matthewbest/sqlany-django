@@ -46,10 +46,16 @@ if djangoVersion[:2] >= (1, 8):
 DatabaseError = Database.DatabaseError
 IntegrityError = Database.IntegrityError
 
+if djangoVersion[0] >= 2:
+    from decimal import Decimal
+    decimal_converter = Decimal
+else:
+    decimal_converter = util.typecast_decimal
+
 Database.register_converter(Database.DT_TIMESTAMP, util.typecast_timestamp)
 Database.register_converter(Database.DT_DATE, util.typecast_date)
 Database.register_converter(Database.DT_TIME, util.typecast_time)
-Database.register_converter(Database.DT_DECIMAL, util.typecast_decimal)
+Database.register_converter(Database.DT_DECIMAL, decimal_converter)
 Database.register_converter(Database.DT_BIT, lambda x: x if x is None else bool(x))
 
 
