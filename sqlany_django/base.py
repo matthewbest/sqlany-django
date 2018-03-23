@@ -91,11 +91,9 @@ class CursorWrapper(object):
 
     def convert_query(self, query, params):
         """
-        Django uses "format" style placeholders, but SQL Anywhere uses "qmark" style.
-        This fixes it -- but note that if you want to use a literal "%s" in a query,
-        you'll need to use "%%s".
+        Place all of the values into the SQL query, converting those values that
+        don't have native SQL support and ensuring correct '' syntax is in place.
         """
-        # Fix params to include quotes
         fixed_params = []
         for param in params:
             if type(param) is str:
