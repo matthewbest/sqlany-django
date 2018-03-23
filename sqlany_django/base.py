@@ -139,7 +139,7 @@ class CursorWrapper(object):
 
             # Do a multi-stage statement to change an index key
             if e.errorcode in self.codes_for_edit_index:
-                pass  # TODO for Django 1.11.6 compatibility
+                pass  # TODO for Django 1.11.1 compatibility
 
             # Map some error codes to IntegrityError, since they seem to be
             # misclassified and Django would prefer the more logical place.

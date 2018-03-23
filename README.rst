@@ -7,7 +7,7 @@ SQL Anywhere Django Driver
 This is a SQL Anywhere database backend for Django. The backend is
 distributed as a stand-alone python module. This backend has been
 tested with SQL Anywhere versions 12, 16, and 17 using Django versions 1.1.4, 
-1.2.7, 1.3.7, 1.4.10, 1.5.5, 1.6.1, 1.7.1, 1.8.5, 1.9.x, 1.10.x (?), 1.11.1, 1.11.6 (?)
+1.2.7, 1.3.7, 1.4.10, 1.5.5, 1.6.1, 1.7.1, 1.8.5, 1.9.x, 1.10.x (?), 1.11.1 (?)
 
 #. Install the required software
 
