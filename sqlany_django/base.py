@@ -59,11 +59,6 @@ Database.register_converter(Database.DT_DECIMAL, decimal_converter)
 Database.register_converter(Database.DT_BIT, lambda x: x if x is None else bool(x))
 
 
-def trace(x):
-    # print( x )
-    return x
-
-
 def _datetimes_in(args):
     def fix(arg):
         if isinstance(arg, datetime.datetime):
@@ -94,24 +89,32 @@ class CursorWrapper(object):
             self.cursor.close()
             self.cursor = None
 
-    def convert_query(self, query, num_params):
+    def convert_query(self, query, params):
         """
         Django uses "format" style placeholders, but SQL Anywhere uses "qmark" style.
         This fixes it -- but note that if you want to use a literal "%s" in a query,
         you'll need to use "%%s".
         """
-        return query if num_params == 0 else query % tuple("?" * num_params)
+        # Fix params to include quotes
+        fixed_params = []
+        for param in params:
+            if type(param) is str:
+                fixed_params.append("'{}'".format(param))
+            else:
+                fixed_params.append(param)
+        fixed_params = tuple(fixed_params)
+        return query % fixed_params
 
     def execute(self, query, args=()):
         if djangoVersion[:2] >= (1, 4) and settings.USE_TZ:
             args = _datetimes_in(args)
         try:
             if args != None:
-                query = self.convert_query(query, len(args))
-            ret = self.cursor.execute(trace(query), trace(args))
+                query = self.convert_query(query, args)
+            ret = self.cursor.execute(query)
             return ret
         except Database.OperationalError as e:
-            if e.message == 'Connection was terminated':
+            if str(e) == 'Connection was terminated':
                 from django import db
                 try:
                     db.close_old_connections()
@@ -132,9 +135,9 @@ class CursorWrapper(object):
             except TypeError:
                 args = tuple(args)
             if len(args) > 0:
-                query = self.convert_query(query, len(args[0]))
-                ret = self.cursor.executemany(trace(query), trace(args))
-                return trace(ret)
+                query = self.convert_query(query, args[0])
+                ret = self.cursor.executemany(query)
+                return ret
             else:
                 return None
         except Database.OperationalError as e:
@@ -146,18 +149,18 @@ class CursorWrapper(object):
 
     def fetchone(self):
         if djangoVersion[:2] < (1, 4) or not settings.USE_TZ:
-            return trace(self.cursor.fetchone())
+            return self.cursor.fetchone()
         return self._datetimes_out(self.cursor.fetchone())
 
     def fetchmany(self, size=0):
         if djangoVersion[:2] < (1, 4) or not settings.USE_TZ:
-            return trace(self.cursor.fetchmany(size))
+            return self.cursor.fetchmany(size)
         rows = self.cursor.fetchmany(size)
         return list(self._datetimes_out(row) for row in rows)
 
     def fetchall(self):
         if djangoVersion[:2] < (1, 4) or not settings.USE_TZ:
-            return trace(self.cursor.fetchall())
+            return self.cursor.fetchall()
         return list(self._datetimes_out(row) for row in self.cursor.fetchall())
 
     def _datetimes_out(self, row):
@@ -171,7 +174,7 @@ class CursorWrapper(object):
         if row is None:
             return row
 
-        return trace(tuple(fix(item) for item in zip(row, self.cursor.description)))
+        return tuple(fix(item) for item in zip(row, self.cursor.description))
 
     def __getattr__(self, attr):
         if attr in self.__dict__:
