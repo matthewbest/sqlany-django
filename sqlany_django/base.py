@@ -209,9 +209,15 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 class DatabaseOperations(BaseDatabaseOperations):
     compiler_module = "sqlany_django.compiler"
 
-    def bulk_insert_sql(self, fields, num_values):
-        items_sql = "(%s)" % ", ".join(["%s"] * len(fields))
-        return "VALUES " + ", ".join([items_sql] * num_values)
+    if djangoVersion[:2] >= (1,9):
+        def bulk_insert_sql(self, fields, placeholder_rows):
+            placeholder_rows_sql = (", ".join(row) for row in placeholder_rows)
+            values_sql = ", ".join("(%s)" % sql for sql in placeholder_rows_sql)
+            return "VALUES " + values_sql
+    else:
+        def bulk_insert_sql(self, fields, num_values):
+            items_sql = "(%s)" % ", ".join(["%s"] * len(fields))
+            return "VALUES " + ", ".join([items_sql] * num_values)
 
     def date_extract_sql(self, lookup_type, field_name):
         """
