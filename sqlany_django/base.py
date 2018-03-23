@@ -100,6 +100,13 @@ class CursorWrapper(object):
         for param in params:
             if type(param) is str:
                 fixed_params.append("'{}'".format(param))
+            elif param is None:
+                fixed_params.append('NULL')
+            elif type(param) is bool:
+                if param:
+                    fixed_params.append('1')
+                else:
+                    fixed_params.append('0')
             else:
                 fixed_params.append(param)
         fixed_params = tuple(fixed_params)
@@ -109,6 +116,8 @@ class CursorWrapper(object):
         if djangoVersion[:2] >= (1, 4) and settings.USE_TZ:
             args = _datetimes_in(args)
         try:
+            import pdb
+            pdb.set_trace()
             if args != None:
                 query = self.convert_query(query, args)
             ret = self.cursor.execute(query)
