@@ -4,7 +4,7 @@ SQL Anywhere database backend for Django.
 Requires sqlanydb
 """
 
-import re, ctypes, sys
+import ctypes, sys
 
 try:
     import sqlanydb as Database
@@ -68,6 +68,8 @@ def _datetimes_in(args):
             arg = arg.astimezone(utc).replace(tzinfo=None)
         return arg
 
+    if args is None:
+        return ()
     return tuple(fix(arg) for arg in args)
 
 
@@ -80,6 +82,15 @@ class CursorWrapper(object):
     to the particular underlying representation returned by Connection.cursor().
     """
     codes_for_integrityerror = (1048,)
+    codes_for_edit_index = (-122,)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.cursor:
+            self.cursor.close()
+            self.cursor = None
 
     def __init__(self, cursor):
         self.cursor = cursor
@@ -125,6 +136,11 @@ class CursorWrapper(object):
                     db.close_old_connections()
                 except AttributeError:
                     db.close_connection()
+
+            # Do a multi-stage statement to change an index key
+            if e.errorcode in self.codes_for_edit_index:
+                pass  # TODO for Django 1.11.6 compatibility
+
             # Map some error codes to IntegrityError, since they seem to be
             # misclassified and Django would prefer the more logical place.
             if e.errorcode in self.codes_for_integrityerror:
