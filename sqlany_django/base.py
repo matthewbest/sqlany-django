@@ -116,8 +116,6 @@ class CursorWrapper(object):
         if djangoVersion[:2] >= (1, 4) and settings.USE_TZ:
             args = _datetimes_in(args)
         try:
-            import pdb
-            pdb.set_trace()
             if args != None:
                 query = self.convert_query(query, args)
             ret = self.cursor.execute(query)
