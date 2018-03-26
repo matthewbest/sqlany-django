@@ -82,7 +82,7 @@ class CursorWrapper(object):
     to the particular underlying representation returned by Connection.cursor().
     """
     codes_for_integrityerror = (1048,)
-    codes_for_edit_index = (-122,)
+    codes_for_edit_index = (-127,)
 
     def __enter__(self):
         return self
@@ -137,9 +137,24 @@ class CursorWrapper(object):
                 except AttributeError:
                     db.close_connection()
 
-            # Do a multi-stage statement to change an index key
-            if e.errorcode in self.codes_for_edit_index:
-                pass  # TODO for Django 1.11.1 compatibility
+            # For Django >= 1.10, do a multi-stage statement to change an index key
+            # Q: Should we perform this logic for any version of Django?
+            if djangoVersion[:2] >= (1, 10) and e.errorcode in self.codes_for_edit_index:
+                # TODO We need to do more work to make the modification of index keys generic.
+                # Currently this only handles the case where Django's default auth_user migrations (008) attempt to
+                # increase the length of the unique username field to 150 characters. For user defined models, we will
+                # need to dynamically look up the index. There should be a way of doing this if Django is consistent
+                # with its naming schema for these constraints ("<table_name> UNIQUE (<field_name>)")
+                if query != 'ALTER TABLE "auth_user" ALTER "username" varchar(150)':
+                    # This is not the expected case, and we don't do generic index keys yet; raise original error
+                    raise
+                try:
+                    self.cursor.execute('DROP INDEX "auth_user"."auth_user UNIQUE (username)"')
+                    ret = self.cursor.execute(query)  # ALTER TABLE "auth_user" ALTER "username" varchar(150)
+                    self.cursor.execute('ALTER TABLE "auth_user" ADD CONSTRAINT "auth_user UNIQUE (username)" UNIQUE ( "username" ASC)')
+                    return ret
+                except Database.OperationalError as e:
+                    raise Database.OperationalError('attempted to modify index edit for username, but failed') from e
 
             # Map some error codes to IntegrityError, since they seem to be
             # misclassified and Django would prefer the more logical place.
