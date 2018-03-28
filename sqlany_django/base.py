@@ -59,6 +59,9 @@ Database.register_converter(Database.DT_DECIMAL, decimal_converter)
 Database.register_converter(Database.DT_BIT, lambda x: x if x is None else bool(x))
 
 
+PAUSE = False
+
+
 def _datetimes_in(args):
     def fix(arg):
         if isinstance(arg, datetime.datetime):
@@ -122,11 +125,27 @@ class CursorWrapper(object):
         return query % fixed_params
 
     def execute(self, query, args=()):
+        global PAUSE
+
+        if 'CREATE TABLE' in query:
+            import pdb
+            pdb.set_trace()
+
         if djangoVersion[:2] >= (1, 4) and settings.USE_TZ:
             args = _datetimes_in(args)
         try:
             if args != None:
                 query = self.convert_query(query, args)
+
+            # if 'CREATE TABLE "auth_user"' in query:
+            #     import pdb
+            #     pdb.set_trace()
+            #
+            # if 'CREATE INDEX "analytics_result_project_id_9b00f933" ON "analytics_result" ("project_id")' == query or PAUSE:
+            #     import pdb
+            #     pdb.set_trace()
+            #     PAUSE = True
+
             ret = self.cursor.execute(query)
             return ret
         except Database.OperationalError as e:
@@ -136,6 +155,10 @@ class CursorWrapper(object):
                     db.close_old_connections()
                 except AttributeError:
                     db.close_connection()
+
+            # Ignore errors from tables already existing
+            if e.errorcode == -110:
+                return None
 
             # For Django >= 1.10, do a multi-stage statement to change an index key
             # Q: Should we perform this logic for any version of Django?
